@@ -223,21 +223,22 @@ def profile():
         flash("Access unauthorized.", "danger")
         return redirect("/")
     
-    form = UpdateUserForm()
+    form = UpdateUserForm(obj=g.user)
 
     if form.validate_on_submit():
-        u = User.query.get_or_404(g.user)
+        u = g.user
         user = User.authenticate(u.username, form.password.data)
 
         if user:
-            u.username = form.username.data or u.username
-            u.email = form.email.data or u.email
+            u.username = form.username.data
+            u.email = form.email.data
             u.image_url = form.image_url.data or u.image_url
             u.header_image_url = form.header_image_url.data or u.header_image_url
             u.bio = form.bio.data or u.bio
-            db.session.add(u)
+            u.location = form.location.data or u.location
+
             db.session.commit()
-            return redirect("/users/<int:user_id>")
+            return redirect(f"/users/{u.id}")
     
     return render_template("users/edit.html", form=form)
 
@@ -320,10 +321,14 @@ def homepage():
     - logged in: 100 most recent messages of followed_users
     """
 
+    u = g.user
+
 
     if g.user:
         messages = (Message
                     .query
+                    .join(Message.user)
+                    .filter(User.id.in_(f.id for f in u.following))
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
