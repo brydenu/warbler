@@ -170,6 +170,13 @@ nav + .container {
   width: 100%;
 }
 
+#profile-banner {
+  object-fit: cover;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
 #profile-avatar {
   width: 200px;
   height: 200px;

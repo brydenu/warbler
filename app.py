@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, flash, redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
-from forms import UserAddForm, LoginForm, MessageForm
+from forms import UserAddForm, LoginForm, MessageForm, UpdateUserForm
 from models import db, connect_db, User, Message
 
 CURR_USER_KEY = "curr_user"
@@ -113,7 +113,14 @@ def login():
 def logout():
     """Handle logout of user."""
 
-    # IMPLEMENT THIS
+    if not g.user: 
+        return redirect("/")
+
+    do_logout()
+    flash("Logged out", "success")
+    g.user = None
+    return redirect("/")
+    
 
 
 ##############################################################################
@@ -211,7 +218,28 @@ def stop_following(follow_id):
 def profile():
     """Update profile for current user."""
 
-    # IMPLEMENT THIS
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+    
+    form = UpdateUserForm()
+
+    if form.validate_on_submit():
+        u = User.query.get_or_404(g.user)
+        user = User.authenticate(u.username, form.password.data)
+
+        if user:
+            u.username = form.username.data or u.username
+            u.email = form.email.data or u.email
+            u.image_url = form.image_url.data or u.image_url
+            u.header_image_url = form.header_image_url.data or u.header_image_url
+            u.bio = form.bio.data or u.bio
+            db.session.add(u)
+            db.session.commit()
+            return redirect("/users/<int:user_id>")
+    
+    return render_template("users/edit.html", form=form)
 
 
 @app.route('/users/delete', methods=["POST"])
@@ -228,6 +256,7 @@ def delete_user():
     db.session.commit()
 
     return redirect("/signup")
+
 
 
 ##############################################################################
@@ -290,6 +319,7 @@ def homepage():
     - anon users: no messages
     - logged in: 100 most recent messages of followed_users
     """
+
 
     if g.user:
         messages = (Message
