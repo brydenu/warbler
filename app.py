@@ -18,7 +18,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
-app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = True
+app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', "it's a secret")
 toolbar = DebugToolbarExtension(app)
 
@@ -308,6 +308,31 @@ def messages_destroy(message_id):
 
     return redirect(f"/users/{g.user.id}")
 
+##############################################################################
+# "Like" Pages
+
+@app.route("/users/add_like/<int:msg_id>", methods=["POST"])
+def add_like(msg_id):
+    """Adds a like to a message"""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    user = g.user
+    message = Message.query.get_or_404(msg_id)
+
+    if message in user.likes:
+        user.likes.remove(message)
+        db.session.commit()
+        return redirect("/")
+
+    user.likes.append(message)
+    db.session.commit()
+    return redirect("/")
+
+
+
 
 ##############################################################################
 # Homepage and error pages
@@ -321,19 +346,19 @@ def homepage():
     - logged in: 100 most recent messages of followed_users
     """
 
-    u = g.user
+    user = g.user
 
 
     if g.user:
         messages = (Message
                     .query
                     .join(Message.user)
-                    .filter(User.id.in_(f.id for f in u.following))
+                    .filter(User.id.in_(f.id for f in user.following))
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
 
-        return render_template('home.html', messages=messages)
+        return render_template('home.html', messages=messages, user=user)
 
     else:
         return render_template('home-anon.html')
