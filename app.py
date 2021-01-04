@@ -5,7 +5,7 @@ from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
 from forms import UserAddForm, LoginForm, MessageForm, UpdateUserForm
-from models import db, connect_db, User, Message
+from models import db, connect_db, User, Message, Likes
 
 CURR_USER_KEY = "curr_user"
 
@@ -331,6 +331,25 @@ def add_like(msg_id):
     db.session.commit()
     return redirect("/")
 
+@app.route("/users/<int:user_id>/likes", methods=["GET"])
+def view_likes(user_id):
+    """Show the likes of user"""
+
+    if not g.user:
+        flash("Access unauthorized", "danger")
+        return redirect("/")
+
+    user = User.query.get_or_404(user_id)
+   
+    # messages = (Message
+    #             .query
+    #             .filter(Likes.id.in_(l.id for l in user.likes))
+    #             .order_by(Likes.id)
+    #             .all())
+
+    messages = user.likes
+
+    return render_template("home.html", messages=messages, user=user)
 
 
 
