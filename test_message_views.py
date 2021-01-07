@@ -49,6 +49,9 @@ class MessageViewTestCase(TestCase):
                                     password="testuser",
                                     image_url=None)
 
+        self.testuser_id = 7777
+        self.testuser.id = self.testuser_id
+
         db.session.commit()
 
     def test_add_message(self):
@@ -71,3 +74,62 @@ class MessageViewTestCase(TestCase):
 
             msg = Message.query.one()
             self.assertEqual(msg.text, "Hello")
+
+    
+    def test_show_messages(self):
+        """Can show message on seperate page?"""
+
+
+        m = Message(
+            id=9999, 
+            text="testing message", 
+            user_id=self.testuser_id
+        )
+
+        db.session.add(m)
+        db.session.commit()
+
+        with self.client as c:
+
+            m = Message.query.get(9999)
+
+            resp = c.get(f'/messages/{m.id}')
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("testing message", html)
+
+
+        
+    def test_messages_destroy(self):
+        """Tests deleting a message"""
+
+        m = Message(
+            id=9999,
+            text="am i deleted?",
+            user_id=self.testuser_id
+        )
+
+        db.session.add(m)
+        db.session.commit()
+
+        with self.client as c:
+            with c.session_transaction() as sess:
+                sess[CURR_USER_KEY] = self.testuser.id
+            
+            m = Message.query.get(9999)
+
+            resp = c.get(f'/messages/{m.id}')
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("am i deleted?", html)
+
+            resp = c.post(f'/messages/9999/delete')
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 302)
+            self.assertNotIn("am i deleted?", html)
+
+
+        

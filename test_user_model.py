@@ -56,3 +56,8 @@ class UserModelTestCase(TestCase):
         # User should have no messages & no followers
         self.assertEqual(len(u.messages), 0)
         self.assertEqual(len(u.followers), 0)
+
+    def test_follows_model(self):
+        """Does model work?"""
+
+        
