@@ -131,5 +131,7 @@ class MessageViewTestCase(TestCase):
             self.assertEqual(resp.status_code, 302)
             self.assertNotIn("am i deleted?", html)
 
+    
+
 
         
