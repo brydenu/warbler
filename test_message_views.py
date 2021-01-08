@@ -47,12 +47,19 @@ class MessageViewTestCase(TestCase):
         self.testuser = User.signup(username="testuser",
                                     email="test@test.com",
                                     password="testuser",
-                                    image_url=None)
+                                    image_url=None
+                                    )
 
         self.testuser_id = 7777
         self.testuser.id = self.testuser_id
 
         db.session.commit()
+
+    def tearDown(self):
+        res = super().tearDown()
+        db.session.rollback()
+        return res
+
 
     def test_add_message(self):
         """Can use add a message?"""
@@ -74,6 +81,54 @@ class MessageViewTestCase(TestCase):
 
             msg = Message.query.one()
             self.assertEqual(msg.text, "Hello")
+    
+    def test_add_not_logged_in(self):
+        """Can you add a message while not logged in?"""
+
+        with self.client as c:
+
+            # Find amount of messages to reference later
+            total_messages = len(Message.query.all())
+
+            resp = c.post("/messages/new", data={"text": "this shouldnt work"})
+
+            # Should redirect
+            self.assertEqual(resp.status_code, 302)
+
+            # Should have same number of messages as before (nothing was added)
+            self.assertEqual(total_messages, len(Message.query.all()))
+
+    def test_add_as_another_user(self):
+        """Are you stopped from adding a message as another user?"""
+
+        # Create user to try to post as setup user
+        imposter = User.signup(username="imposter",
+                                    email="imposter@test.com",
+                                    password="password",
+                                    image_url=None
+                                    )
+        uid = 123456789
+        imposter.id = uid
+        db.session.commit()
+
+
+        with self.client as c:
+            with c.session_transaction() as sess:
+                 sess[CURR_USER_KEY] = 123456789
+
+            # Tries to add message as as user that is not the user in the session
+            resp = c.post("/messages/new", data={"text":"This message shouldn't post", "user_id":"7777"})
+            
+            # Should redirect
+            self.assertEqual(resp.status_code, 302)
+
+            # Gets total amount of messages from user id 7777
+            total_msgs = len(Message.query.filter(Message.user_id == self.testuser_id).all())
+
+            # User id 7777 shouldn't have any messages
+            self.assertEqual(total_msgs, 0)
+        
+
 
     
     def test_show_messages(self):
@@ -130,6 +185,35 @@ class MessageViewTestCase(TestCase):
 
             self.assertEqual(resp.status_code, 302)
             self.assertNotIn("am i deleted?", html)
+
+    def test_messages_destroy_not_loggedin(self):
+        """Can you delete a message when not logged in?"""
+
+        m = Message(
+            id=9999,
+            text="am i deleted?",
+            user_id=self.testuser_id
+        )
+
+        db.session.add(m)
+        db.session.commit()
+
+        with self.client as c:
+
+            # Find total number of messages to reference later
+            total_messages = len(Message.query.all())
+
+            resp = c.post("/messages/9999/delete")
+
+            # Should redirect to /
+            self.assertEqual(resp.status_code, 302)
+
+            # Should have same number of messages as before (nothing was deleted)
+            self.assertEqual(total_messages, len(Message.query.all()))
+    
+
+
+
 
     
 
