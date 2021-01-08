@@ -31,7 +31,7 @@ db.create_all()
 
 
 class UserModelTestCase(TestCase):
-    """Test views for messages."""
+    """Test model for User."""
 
     def setUp(self):
         """Create test client, add sample data."""
@@ -176,7 +176,7 @@ class UserModelTestCase(TestCase):
         self.assertTrue(user)
         self.assertEqual(user.username, "setuptester")
         self.assertEqual(user.email, "tester@test.com")
-        
+
 
     def test_invalid_username(self):
         """Does User.authenticate successfully deny access without good username?"""
